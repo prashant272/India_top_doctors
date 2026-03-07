@@ -1,0 +1,111 @@
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+import Navbar from "./Components/common/Navbar/Navbar";
+import Footer from "./Components/common/Footer/Footer";
+import { AuthProvider } from "./context/AuthContext";
+import { PatientProvider } from "./context/PatientContext";
+import { SocketProvider } from "./context/SocketContext";
+import { NotificationProvider } from "./context/NotificationContext";
+import { ToastContainer } from "react-toastify";
+import { AdminProvider } from "./context/AdminContext";
+import Providers from "./providers";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata = {
+  metadataBase: new URL("https://www.indiatopdoctors.com"),
+  title: {
+    default: "India Top Doctors - Best Doctors, Hospitals & Online Consultation",
+    template: "%s | India Top Doctors"
+  },
+  description: "India's leading platform to find top-rated doctors, hospitals, and medical specialists. Book online appointments, video consultations, and get verified healthcare services.",
+  keywords: [
+    "India Top Doctors",
+    "Online Doctor Consultation",
+    "Best Hospitals in India",
+    "Book Doctor Appointment",
+    "Verified Doctors India",
+    "Telemedicine India",
+    "Medical Specialists India",
+    "Healthcare India",
+    "Specialist Doctors near me",
+    "Top rated medical care",
+    "Doctor Consultation online"
+  ],
+  authors: [{ name: "India Top Doctors" }],
+  creator: "India Top Doctors",
+  publisher: "India Top Doctors",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "India Top Doctors - Find & Book the Best Healthcare",
+    description: "Connect with verified top-rated doctors and hospitals across India. Quality healthcare at your fingertips.",
+    url: "https://www.indiatopdoctors.com",
+    siteName: "India Top Doctors",
+    images: [
+      {
+        url: "/og-image.jpg", // Suggested: Add a branded OG image in public folder
+        width: 1200,
+        height: 630,
+        alt: "India Top Doctors Portal",
+      },
+    ],
+    locale: "en_IN",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "India Top Doctors - Best Medical Services in India",
+    description: "Verified doctors, top-rated hospitals, and easy online booking.",
+    images: ["/og-image.jpg"],
+    creator: "@IndiaTopDoctors",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+};
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <Providers>
+          <AuthProvider>
+            <SocketProvider>
+              <NotificationProvider>
+                <AdminProvider>
+                  <PatientProvider>
+                    <main>{children}</main>
+                    <ToastContainer />
+                  </PatientProvider>
+                </AdminProvider>
+              </NotificationProvider>
+            </SocketProvider>
+          </AuthProvider>
+        </Providers>
+      </body>
+    </html>
+  );
+}

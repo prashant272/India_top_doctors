@@ -1,0 +1,13 @@
+/frontend/node_modules
+/frontend/.next
+/frontend/next.jsconfig.mjs
+/frontend/jsconfig.jsconfig
+/frontend/package-lock.json
+/frontend/src/app/components/Notes
+/frontend/src/app/pages/Home2
+/frontend/src/app/components/Login
+
+/backend/node_modules
+/backend/Config/config.env
+/backend/.env
+/backend/package-lock.json
