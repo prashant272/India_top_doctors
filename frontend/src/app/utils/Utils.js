@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const baseURL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8086";
+  process.env.NEXT_PUBLIC_API_URL || "https://api.indiatopdoctors.com";
 
 const API = axios.create({
   baseURL: baseURL,
@@ -15,7 +15,7 @@ API.interceptors.request.use(
     if (userData) {
       const parsedUser = JSON.parse(userData);
       const token = parsedUser?.token;
-       
+
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }

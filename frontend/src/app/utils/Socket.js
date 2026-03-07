@@ -10,9 +10,9 @@ export const connectSocket = (userId) => {
     socket = null;
   }
 
-  socket = io(process.env.NEXT_PUBLIC_API_URL || "http://localhost:8086", {
+  socket = io(process.env.NEXT_PUBLIC_API_URL || "https://api.indiatopdoctors.com", {
     query: { userId },
-    transports: ["polling", "websocket"],
+    transports: ["websocket", "polling"],
     withCredentials: true,
     reconnection: true,
     reconnectionAttempts: 5,
