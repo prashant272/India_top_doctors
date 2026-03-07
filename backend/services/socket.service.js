@@ -8,13 +8,27 @@ const server = http.createServer(app);
 const allowedOrigins = [
     "http://localhost:3000",
     "http://localhost:3001",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
     "https://www.indiatopdoctors.com",
     "https://indiatopdoctors.com",
 ];
 
 const io = new Server(server, {
     cors: {
-        origin: allowedOrigins,
+        origin: function (origin, callback) {
+            // In development, allow if origin is local or missing
+            const isLocal = !origin ||
+                origin.includes("localhost") ||
+                origin.includes("127.0.0.1") ||
+                origin.includes("192.168.");
+
+            if (isLocal || allowedOrigins.includes(origin)) {
+                callback(null, true);
+            } else {
+                callback(new Error("Not allowed by CORS"));
+            }
+        },
         methods: ["GET", "POST"],
         credentials: true,
         allowedHeaders: ["Content-Type", "Authorization"],

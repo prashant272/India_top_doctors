@@ -32,17 +32,20 @@ connectdb();
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:3001",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:3001",
   "https://www.indiatopdoctors.com",
   "https://indiatopdoctors.com",
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    console.log("Incoming origin:", origin);
+    const isLocal = !origin ||
+      origin.includes("localhost") ||
+      origin.includes("127.0.0.1") ||
+      origin.includes("192.168.");
 
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin)) {
+    if (isLocal || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS"));

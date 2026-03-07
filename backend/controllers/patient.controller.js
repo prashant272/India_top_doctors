@@ -11,6 +11,8 @@ exports.getDoctors = async (req, res) => {
       .populate({ path: "currentPlan", select: "name price features isActive" })
       .populate({ path: "hospitalAffiliations.hospital", select: "name website logo isVerified isActive" })
 
+    console.log(`[getDoctors] Found ${doctors?.length || 0} active doctors`);
+
     if (!doctors) {
       return res.status(404).json({ success: false, message: "Failed to fetch doctors" });
     }

@@ -1,33 +1,33 @@
 import { API, baseURL } from "../utils/Utils";
 
 export const createReview = async (data) => {
-  return API.post(`${baseURL}/review/create`, data);
+  return API.post(`/review/create`, data);
 };
 
 export const getAllReviews = async () => {
-  return API.get(`${baseURL}/review/all`);
+  return API.get(`/review/all`);
 };
 
 export const getDoctorReviews = async (doctorId) => {
-  return API.get(`${baseURL}/review/doctor/${doctorId}`);
+  return API.get(`/review/doctor/${doctorId}`);
 };
 
 export const getPlatformReviews = async () => {
-  return API.get(`${baseURL}/review/platform`);
+  return API.get(`/review/platform`);
 };
 
 export const getMyReviews = async () => {
-  return API.get(`${baseURL}/review/my-reviews`);
+  return API.get(`/review/my-reviews`);
 };
 
 export const getReviewById = async (id) => {
-  return API.get(`${baseURL}/review/${id}`);
+  return API.get(`/review/${id}`);
 };
 
 export const updateReview = async (id, data) => {
-  return API.put(`${baseURL}/review/${id}`, data);
+  return API.put(`/review/${id}`, data);
 };
 
 export const deleteReview = async (id) => {
-  return API.delete(`${baseURL}/review/${id}`);
+  return API.delete(`/review/${id}`);
 };

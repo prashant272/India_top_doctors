@@ -1,4 +1,5 @@
 import { io } from "socket.io-client";
+import { baseURL } from "./Utils";
 
 let socket = null;
 
@@ -10,13 +11,14 @@ export const connectSocket = (userId) => {
     socket = null;
   }
 
-  socket = io(process.env.NEXT_PUBLIC_API_URL || "https://api.indiatopdoctors.com", {
+  const socketURL = baseURL;
+
+  socket = io(socketURL, {
     query: { userId },
-    transports: ["websocket", "polling"],
     withCredentials: true,
     reconnection: true,
     reconnectionAttempts: 5,
-    reconnectionDelay: 1000,
+    reconnectionDelay: 5000,
   });
 
 

@@ -12,7 +12,7 @@ export default async function sitemap() {
     try {
         // Attempt to fetch doctors for dynamic routes
         // Note: In a real production build, you'd use your actual API URL
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/patient/getdoctors`, { next: { revalidate: 3600 } });
+        const response = await fetch(`${baseURL}/patient/getdoctors`, { next: { revalidate: 3600 } });
         const data = await response.json();
 
         if (data.success && Array.isArray(data.data)) {

@@ -1,10 +1,11 @@
 import DoctorProfilePage from '@/app/Components/patients/DoctorProfilePage/DoctorProfilePage'
 import React from 'react'
+import { baseURL } from '@/app/utils/Utils'
 
 export async function generateMetadata({ params }) {
   const { id } = await params;
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/patient/getdoctors`, { next: { revalidate: 3600 } });
+    const res = await fetch(`${baseURL}/patient/getdoctors`, { next: { revalidate: 3600 } });
     const data = await res.json();
     const doctor = data.success ? data.data.find(d => d._id === id) : null;
 
@@ -31,7 +32,7 @@ const page = async ({ params }) => {
   let jsonLd = null;
 
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/patient/getdoctors`, { next: { revalidate: 3600 } });
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8086"}/patient/getdoctors`, { next: { revalidate: 3600 } });
     const data = await res.json();
     const doctor = data.success ? data.data.find(d => d._id === id) : null;
 

@@ -37,8 +37,8 @@ export default function AuthMain() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-orange-50 relative overflow-hidden">
       <div className="absolute inset-0 opacity-30">
-        <div className="absolute top-20 left-20 w-96 h-96 bg-teal-400 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-20 w-96 h-96 bg-orange-400 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute top-20 left-20 w-96 h-96 bg-teal-400 rounded-full blur-3xl animate-custom-pulse"></div>
+        <div className="absolute bottom-20 right-20 w-96 h-96 bg-orange-400 rounded-full blur-3xl animate-custom-pulse" style={{ animationDelay: '1s' }}></div>
       </div>
 
       <div className="absolute inset-0 opacity-5">
@@ -113,21 +113,19 @@ export default function AuthMain() {
                     <div className="flex gap-4 mb-6">
                       <button
                         onClick={() => setAuthMode('signin')}
-                        className={`flex-1 py-3 font-semibold rounded-xl transition-all duration-300 ${
-                          authMode === 'signin'
+                        className={`flex-1 py-3 font-semibold rounded-xl transition-all duration-300 ${authMode === 'signin'
                             ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg'
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        }`}
+                          }`}
                       >
                         Sign In
                       </button>
                       <button
                         onClick={() => setAuthMode('signup')}
-                        className={`flex-1 py-3 font-semibold rounded-xl transition-all duration-300 ${
-                          authMode === 'signup'
+                        className={`flex-1 py-3 font-semibold rounded-xl transition-all duration-300 ${authMode === 'signup'
                             ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg'
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        }`}
+                          }`}
                       >
                         Sign Up
                       </button>
@@ -139,11 +137,10 @@ export default function AuthMain() {
                         <button
                           key={key}
                           onClick={() => setUserRole(key)}
-                          className={`flex-1 py-2 px-3 rounded-lg font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
-                            userRole === key
+                          className={`flex-1 py-2 px-3 rounded-lg font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${userRole === key
                               ? 'bg-white text-teal-600 shadow-md'
                               : 'text-gray-600 hover:text-teal-600'
-                          }`}
+                            }`}
                         >
                           <Icon className="w-4 h-4" />
                           {label}
@@ -182,15 +179,6 @@ export default function AuthMain() {
         </div>
       </div>
 
-      <style jsx>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 0.3; transform: scale(1); }
-          50% { opacity: 0.5; transform: scale(1.1); }
-        }
-        .animate-pulse {
-          animation: pulse 3s ease-in-out infinite;
-        }
-      `}</style>
     </div>
   )
 }
