@@ -32,7 +32,7 @@ const page = async ({ params }) => {
   let jsonLd = null;
 
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8086"}/patient/getdoctors`, { next: { revalidate: 3600 } });
+    const res = await fetch(`${baseURL}/patient/getdoctors`, { next: { revalidate: 3600 } });
     const data = await res.json();
     const doctor = data.success ? data.data.find(d => d._id === id) : null;
 

@@ -1,3 +1,5 @@
+import { baseURL } from "./utils/Utils";
+
 const BASE_URL = "https://www.indiatopdoctors.com";
 
 export default async function sitemap() {

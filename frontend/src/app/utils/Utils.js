@@ -6,9 +6,14 @@ const isDevelopment = (typeof window !== "undefined" &&
     window.location.hostname.startsWith("192.168."))) ||
   (process.env.NODE_ENV === 'development');
 
-const baseURL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (isDevelopment ? "http://localhost:8086" : "https://api.indiatopdoctors.com");
+let rawBaseURL =
+  process.env.NEXT_PUBLIC_API_URL || "https://api.indiatopdoctors.com";
+
+if (rawBaseURL && !rawBaseURL.startsWith("http://") && !rawBaseURL.startsWith("https://")) {
+  rawBaseURL = `https://${rawBaseURL}`;
+}
+
+const baseURL = rawBaseURL;
 
 const API = axios.create({
   baseURL: baseURL,
