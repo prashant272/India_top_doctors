@@ -110,20 +110,21 @@ function formatDate(dateStr) {
 }
 
 export default function OverviewTab({ doctor, params, isOwner }) {
-  const bi    = doctor.basicInfo        || {}
-  const pi    = doctor.professionalInfo || {}
+  const bi = doctor.basicInfo || {}
+  const pi = doctor.professionalInfo || {}
   const avail = Array.isArray(doctor.availability) ? doctor.availability : []
 
-  const features     = doctor.currentPlan?.features || {}
+  const features = doctor.currentPlan?.features || {}
   const planIsActive = doctor.currentPlan?.isActive === true
 
-  const specialty   = pi.specialization || ''
-  const experience  = pi.experience     ?? ''
-  const displayName = bi.fullName       || 'Doctor'
+  const specialty = pi.specialization || ''
+  const experience = pi.experience ?? ''
+  const displayName = bi.fullName || 'Doctor'
 
   const clinicNames = [...new Set(avail.map(s => s.location?.clinicName).filter(Boolean))]
-  const cities      = [...new Set(avail.map(s => s.location?.city).filter(Boolean))]
-  const modes       = [...new Set(avail.map(s => s.consultationMode).filter(Boolean))]
+  const cities = [...new Set(avail.map(s => s.location?.city).filter(Boolean))]
+  const hasOnline = avail.some(a => a.consultationMode?.toLowerCase() === 'online' || a.consultationMode?.toLowerCase() === 'both')
+  const hasOffline = clinicNames.length > 0 || avail.some(a => a.consultationMode?.toLowerCase() === 'offline' || a.consultationMode?.toLowerCase() === 'both')
 
   const about = `${displayName} is a renowned ${specialty}${experience ? ` with over ${experience} years of experience` : ''}. Known for a patient-centric approach and expertise in handling complex cases.`
 
@@ -162,7 +163,7 @@ export default function OverviewTab({ doctor, params, isOwner }) {
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Mode</p>
               <p className="text-sm font-bold text-slate-800 capitalize">
-                {modes.length === 2 ? 'Online & In-Person' : modes[0] || '—'}
+                {hasOnline && hasOffline ? 'Online & In-Person' : (hasOnline ? 'Online' : (hasOffline ? 'In-Person' : '—'))}
               </p>
             </div>
             {clinicNames.length > 0 && (

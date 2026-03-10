@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useContext, useMemo } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useState, useEffect, useContext, useMemo, Suspense } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { usePatientContext } from "@/app/context/PatientContext";
 import { AuthContext } from "@/app/context/AuthContext";
 import {
@@ -9,7 +9,7 @@ import {
   AlertCircle, Stethoscope, FileText, IndianRupee, Loader2, MapPin, Video, Building2,
 } from "lucide-react";
 
-const WORKING_DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const WORKING_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const periodOrder = ["Morning", "Afternoon", "Evening"];
 const periodIcons = { Morning: "🌅", Afternoon: "☀️", Evening: "🌙" };
 
@@ -48,12 +48,18 @@ function normalizeDoctorList(doctorList) {
   return [];
 }
 
-// Expands a single availability slot with consultationMode "both"
-// into two virtual entries: one "online" and one "offline"
+// Expands a single availability slot:
+// - "both" → two entries (online + offline)
+// - "online" + has clinicName → also add an offline entry
 function expandAvailability(availabilityList) {
   const expanded = [];
   for (const avail of availabilityList) {
-    if (avail.consultationMode === "both") {
+    const mode = avail.consultationMode?.toLowerCase();
+    if (mode === "both") {
+      expanded.push({ ...avail, consultationMode: "online", _originalId: avail._id, _id: `${avail._id}_online` });
+      expanded.push({ ...avail, consultationMode: "offline", _originalId: avail._id, _id: `${avail._id}_offline` });
+    } else if (mode === "online" && avail.location?.clinicName) {
+      // Doctor has a physical clinic — offer both modes
       expanded.push({ ...avail, consultationMode: "online", _originalId: avail._id, _id: `${avail._id}_online` });
       expanded.push({ ...avail, consultationMode: "offline", _originalId: avail._id, _id: `${avail._id}_offline` });
     } else {
@@ -63,7 +69,7 @@ function expandAvailability(availabilityList) {
   return expanded;
 }
 
-export default function BookAppointment() {
+function BookAppointmentContent() {
   const params = useParams();
   const router = useRouter();
   const { doctorList } = usePatientContext();
@@ -83,6 +89,10 @@ export default function BookAppointment() {
     notes: "",
   });
 
+  const searchParams = useSearchParams();
+  const preSelectedMode = searchParams.get("mode");
+  const preSelectedAvailId = searchParams.get("availabilityId");
+
   useEffect(() => {
     const list = normalizeDoctorList(doctorList);
     if (!params?.id) return;
@@ -96,13 +106,25 @@ export default function BookAppointment() {
       const avail = Array.isArray(found?.availability) ? found.availability : [];
       if (avail.length > 0) {
         const expanded = expandAvailability(avail);
-        const firstMode = expanded[0]?.consultationMode || "offline";
-        setSelectedMode(firstMode);
-        setSelectedAvailabilityId(expanded[0]?._id || null);
+
+        // Try to find the exact match from pre-selected ID or mode
+        let initialEntry = null;
+        if (preSelectedAvailId) {
+          initialEntry = expanded.find(e => e._id === preSelectedAvailId || e._originalId === preSelectedAvailId);
+        }
+
+        // Fallback to mode match if no ID match or no ID provided
+        if (!initialEntry && preSelectedMode) {
+          initialEntry = expanded.find(e => e.consultationMode === preSelectedMode);
+        }
+
+        const entryToUse = initialEntry || expanded[0];
+        setSelectedMode(entryToUse?.consultationMode || "offline");
+        setSelectedAvailabilityId(entryToUse?._id || null);
       }
     }
     setIsLoading(false);
-  }, [params?.id, doctorList, auth]);
+  }, [params?.id, doctorList, auth, preSelectedMode, preSelectedAvailId]);
 
   const availabilityList = useMemo(
     () => expandAvailability(Array.isArray(doctor?.availability) ? doctor.availability : []),
@@ -336,13 +358,12 @@ export default function BookAppointment() {
                       key={mode}
                       type="button"
                       onClick={() => handleModeChange(mode)}
-                      className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all font-medium text-sm ${
-                        isSelected
-                          ? mode === "online"
-                            ? "border-violet-500 bg-violet-50 text-violet-700"
-                            : "border-orange-400 bg-orange-50 text-orange-700"
-                          : "border-slate-200 bg-slate-50 text-slate-500 hover:border-teal-300 hover:bg-teal-50/40"
-                      }`}
+                      className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all font-medium text-sm ${isSelected
+                        ? mode === "online"
+                          ? "border-violet-500 bg-violet-50 text-violet-700"
+                          : "border-orange-400 bg-orange-50 text-orange-700"
+                        : "border-slate-200 bg-slate-50 text-slate-500 hover:border-teal-300 hover:bg-teal-50/40"
+                        }`}
                     >
                       {mode === "online"
                         ? <Video size={24} className={isSelected ? "text-violet-600" : "text-slate-400"} />
@@ -371,11 +392,10 @@ export default function BookAppointment() {
                         key={avail._id}
                         type="button"
                         onClick={() => handleAvailabilityChange(avail._id)}
-                        className={`w-full text-left p-4 rounded-lg border transition-all ${
-                          isSelected
-                            ? "border-teal-500 bg-teal-50 ring-1 ring-teal-400"
-                            : "border-slate-200 bg-slate-50 hover:border-teal-300 hover:bg-teal-50/40"
-                        }`}
+                        className={`w-full text-left p-4 rounded-lg border transition-all ${isSelected
+                          ? "border-teal-500 bg-teal-50 ring-1 ring-teal-400"
+                          : "border-slate-200 bg-slate-50 hover:border-teal-300 hover:bg-teal-50/40"
+                          }`}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div>
@@ -475,11 +495,10 @@ export default function BookAppointment() {
                                 key={slot.start}
                                 type="button"
                                 onClick={() => setForm((p) => ({ ...p, timeSlot: slot }))}
-                                className={`py-2.5 px-2 rounded-lg border text-center text-xs font-medium transition-all ${
-                                  isSelected
-                                    ? "bg-teal-600 text-white border-teal-700 shadow-md scale-[1.02]"
-                                    : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-teal-50 hover:border-teal-400"
-                                }`}
+                                className={`py-2.5 px-2 rounded-lg border text-center text-xs font-medium transition-all ${isSelected
+                                  ? "bg-teal-600 text-white border-teal-700 shadow-md scale-[1.02]"
+                                  : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-teal-50 hover:border-teal-400"
+                                  }`}
                               >
                                 {slot.label}
                               </button>
@@ -593,5 +612,17 @@ export default function BookAppointment() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function BookAppointment() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <Loader2 className="w-12 h-12 animate-spin text-teal-600" />
+      </div>
+    }>
+      <BookAppointmentContent />
+    </Suspense>
   );
 }

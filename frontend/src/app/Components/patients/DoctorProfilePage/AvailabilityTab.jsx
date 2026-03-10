@@ -6,8 +6,9 @@ import { Clock, Building2, Navigation, Wifi, UserCheck } from 'lucide-react'
 const ORDERED_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 const MODE_STYLES = {
-  online:  { bg: 'bg-blue-50',  text: 'text-blue-700',  border: 'border-blue-200',  Icon: Wifi,      label: 'Online'    },
-  offline: { bg: 'bg-teal-50',  text: 'text-teal-700',  border: 'border-teal-200',  Icon: UserCheck, label: 'In-Person' },
+  online: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', Icon: Wifi, label: 'Online' },
+  offline: { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200', Icon: UserCheck, label: 'In-Person' },
+  both: { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', Icon: Building2, label: 'Online & In-Person' },
 }
 
 function formatTime(t) {
@@ -27,7 +28,7 @@ function slotCount(start, end, dur) {
   return total > 0 ? Math.floor(total / dur) : 0
 }
 
-function ScheduleCard({ slot, index }) {
+function ScheduleCard({ slot, index, onBook }) {
   const mode = MODE_STYLES[slot.consultationMode] ?? MODE_STYLES.offline
   const ModeIcon = mode.Icon
   const count = slotCount(slot.startTime, slot.endTime, slot.slotDuration)
@@ -104,12 +105,45 @@ function ScheduleCard({ slot, index }) {
             </div>
           </div>
         )}
+
+        {/* Booking CTA */}
+        <div className="pt-4 border-t border-slate-50">
+          {slot.consultationMode === 'both' ? (
+            <div className="flex gap-2">
+              <button
+                onClick={() => onBook?.('offline', slot._id)}
+                className="flex-1 py-2.5 bg-teal-600 text-white rounded-xl font-bold text-xs transition-all duration-200 flex items-center justify-center gap-2 hover:bg-teal-700 shadow-md shadow-teal-500/20 hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <Building2 className="w-3.5 h-3.5" />
+                Clinic
+              </button>
+              <button
+                onClick={() => onBook?.('online', slot._id)}
+                className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-xs transition-all duration-200 flex items-center justify-center gap-2 hover:bg-blue-700 shadow-md shadow-blue-500/20 hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <Wifi className="w-3.5 h-3.5" />
+                Online
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => onBook?.(slot.consultationMode, slot._id)}
+              className={`w-full py-2.5 rounded-xl font-bold text-xs transition-all duration-200 flex items-center justify-center gap-2 ${slot.consultationMode === 'online'
+                ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-500/20'
+                : 'bg-teal-600 text-white hover:bg-teal-700 shadow-md shadow-teal-500/20'
+                } hover:scale-[1.02] active:scale-[0.98]`}
+            >
+              {slot.consultationMode === 'online' ? <Wifi className="w-3.5 h-3.5" /> : <Building2 className="w-3.5 h-3.5" />}
+              {slot.consultationMode === 'online' ? 'Book Online' : 'Book Clinic Visit'}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
 }
 
-export default function AvailabilityTab({ doctor }) {
+export default function AvailabilityTab({ doctor, onBook }) {
   const avail = Array.isArray(doctor.availability) ? doctor.availability : []
   const allCoveredDays = new Set(avail.flatMap(s => s.workingDays || []))
 
@@ -135,7 +169,14 @@ export default function AvailabilityTab({ doctor }) {
           <p className="font-semibold">No availability set yet.</p>
         </div>
       ) : (
-        avail.map((slot, i) => <ScheduleCard key={i} slot={slot} index={i} />)
+        avail.map((slot, i) => (
+          <ScheduleCard
+            key={i}
+            slot={slot}
+            index={i}
+            onBook={onBook}
+          />
+        ))
       )}
 
       {avail.length > 0 && (

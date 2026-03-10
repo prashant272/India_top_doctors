@@ -7,7 +7,9 @@ export async function generateMetadata({ params }) {
   try {
     const res = await fetch(`${baseURL}/patient/getdoctors`, { next: { revalidate: 3600 } });
     const data = await res.json();
-    const doctor = data.success ? data.data.find(d => d._id === id) : null;
+    const list = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : (Array.isArray(data?.DoctorList) ? data.DoctorList : []));
+    const findId = id?.toString();
+    const doctor = list.find(d => (d._id || d.id)?.toString() === findId);
 
     if (doctor) {
       const name = doctor.basicInfo?.fullName || "Doctor";
@@ -34,7 +36,9 @@ const page = async ({ params }) => {
   try {
     const res = await fetch(`${baseURL}/patient/getdoctors`, { next: { revalidate: 3600 } });
     const data = await res.json();
-    const doctor = data.success ? data.data.find(d => d._id === id) : null;
+    const list = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : (Array.isArray(data?.DoctorList) ? data.DoctorList : []));
+    const findId = id?.toString();
+    const doctor = list.find(d => (d._id || d.id)?.toString() === findId);
 
     if (doctor) {
       jsonLd = {

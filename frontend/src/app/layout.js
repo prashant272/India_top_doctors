@@ -1,7 +1,5 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Navbar from "./Components/common/Navbar/Navbar";
-import Footer from "./Components/common/Footer/Footer";
 import { AuthProvider } from "./context/AuthContext";
 import { PatientProvider } from "./context/PatientContext";
 import { SocketProvider } from "./context/SocketContext";
@@ -9,6 +7,7 @@ import { NotificationProvider } from "./context/NotificationContext";
 import { ToastContainer } from "react-toastify";
 import { AdminProvider } from "./context/AdminContext";
 import Providers from "./providers";
+import Script from "next/script";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,27 +42,14 @@ export const metadata = {
   authors: [{ name: "India Top Doctors" }],
   creator: "India Top Doctors",
   publisher: "India Top Doctors",
-  formatDetection: {
-    email: false,
-    address: false,
-    telephone: false,
-  },
-  alternates: {
-    canonical: "/",
-  },
+  formatDetection: { email: false, address: false, telephone: false },
+  alternates: { canonical: "/" },
   openGraph: {
     title: "India Top Doctors - Find & Book the Best Healthcare",
     description: "Connect with verified top-rated doctors and hospitals across India. Quality healthcare at your fingertips.",
     url: "https://www.indiatopdoctors.com",
     siteName: "India Top Doctors",
-    images: [
-      {
-        url: "/og-image.jpg", // Suggested: Add a branded OG image in public folder
-        width: 1200,
-        height: 630,
-        alt: "India Top Doctors Portal",
-      },
-    ],
+    images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "India Top Doctors Portal" }],
     locale: "en_IN",
     type: "website",
   },
@@ -105,6 +91,30 @@ export default function RootLayout({ children }) {
             </SocketProvider>
           </AuthProvider>
         </Providers>
+
+        {/* Google Maps */}
+        <script
+          src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDVYXiffRklGe9hK9_of3CgC7M3g0XhQbk&libraries=places"
+          defer
+        ></script>
+
+        {/* OneSignal Push Notifications */}
+        <Script
+          src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js"
+          strategy="afterInteractive"
+        />
+        <Script id="onesignal-init" strategy="afterInteractive">
+          {`
+            window.OneSignalDeferred = window.OneSignalDeferred || [];
+            OneSignalDeferred.push(async function(OneSignal) {
+              await OneSignal.init({
+                appId: "${process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID || 'YOUR_ONESIGNAL_APP_ID'}",
+                notifyButton: { enable: true },
+                allowLocalhostAsSecureOrigin: true,
+              });
+            });
+          `}
+        </Script>
       </body>
     </html>
   );

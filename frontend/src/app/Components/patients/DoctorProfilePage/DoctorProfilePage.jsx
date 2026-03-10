@@ -24,8 +24,9 @@ import ReviewsTab from './ReviewsTab'
 const ORDERED_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 const MODE_STYLES = {
-  online:  { bg: 'bg-blue-50',  text: 'text-blue-700',  border: 'border-blue-200',  Icon: Wifi,      label: 'Online'    },
-  offline: { bg: 'bg-teal-50',  text: 'text-teal-700',  border: 'border-teal-200',  Icon: UserCheck, label: 'In-Person' },
+  online: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', Icon: Wifi, label: 'Online' },
+  offline: { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200', Icon: UserCheck, label: 'In-Person' },
+  both: { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', Icon: Building2, label: 'Online & In-Person' },
 }
 
 const SOCIAL_SIDEBAR_CONFIG = [
@@ -160,18 +161,18 @@ function StatBadge({ icon: Icon, color, children }) {
 }
 
 export default function DoctorProfilePage() {
-  const params  = useParams()
-  const router  = useRouter()
-  const { UserAuthData }  = useContext(AuthContext)
-  const { doctorList }    = usePatientContext()
+  const params = useParams()
+  const router = useRouter()
+  const { UserAuthData } = useContext(AuthContext)
+  const { doctorList } = usePatientContext()
 
-  const [isLoading,   setIsLoading]   = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
   const [selectedTab, setSelectedTab] = useState('overview')
-  const [liked,       setLiked]       = useState(false)
+  const [liked, setLiked] = useState(false)
 
-  const currentUserId   = UserAuthData?.user?._id || UserAuthData?.user?.id || UserAuthData?._id
+  const currentUserId = UserAuthData?.user?._id || UserAuthData?.user?.id || UserAuthData?._id
   const currentUserRole = UserAuthData?.user?.role || UserAuthData?.role
-  const isOwner         = currentUserRole === 'doctor' && String(currentUserId) === String(params?.id)
+  const isOwner = currentUserRole === 'doctor' && String(currentUserId) === String(params?.id)
 
   console.log(doctorList)
 
@@ -216,35 +217,41 @@ export default function DoctorProfilePage() {
     )
   }
 
-  const bi    = doctor.basicInfo        || {}
-  const pi    = doctor.professionalInfo || {}
+  const bi = doctor.basicInfo || {}
+  const pi = doctor.professionalInfo || {}
   const avail = Array.isArray(doctor.availability) ? doctor.availability : []
 
-  const features         = doctor.currentPlan?.features || {}
-  const planIsActive     = doctor.currentPlan?.isActive === true
+  const features = doctor.currentPlan?.features || {}
+  const planIsActive = doctor.currentPlan?.isActive === true
   const hasOnlineBooking = planIsActive && features.onlineBooking === true
   const hasOnlineConsult = planIsActive && features.onlineConsultation === true
-  const isVerified       = planIsActive && features.verifiedBadge === true
-  const hasBlogAccess    = planIsActive && features.blogAccess === true
-  const searchBoost      = planIsActive ? (features.searchBoost || 0) : 0
+  const isVerified = planIsActive && features.verifiedBadge === true
+  const hasBlogAccess = planIsActive && features.blogAccess === true
+  const searchBoost = planIsActive ? (features.searchBoost || 0) : 0
 
-  const displayName   = bi.fullName       || 'Doctor'
-  const specialty     = pi.specialization || ''
-  const qualification = pi.qualification  || ''
-  const experience    = pi.experience     ?? ''
-  const fee           = pi.consultationFee ? `₹${pi.consultationFee}` : 'N/A'
+  const displayName = bi.fullName || 'Doctor'
+  const specialty = pi.specialization || ''
+  const qualification = pi.qualification || ''
+  const experience = pi.experience ?? ''
+  const fee = pi.consultationFee ? `₹${pi.consultationFee}` : 'N/A'
 
-  const clinicNames    = [...new Set(avail.map(s => s.location?.clinicName).filter(Boolean))]
-  const cities         = [...new Set(avail.map(s => s.location?.city).filter(Boolean))]
-  const modes          = [...new Set(avail.map(s => s.consultationMode).filter(Boolean))]
+  const clinicNames = [...new Set(avail.map(s => s.location?.clinicName).filter(Boolean))]
+  const cities = [...new Set(avail.map(s => s.location?.city).filter(Boolean))]
+  const hasOnline = avail.some(a => a.consultationMode?.toLowerCase() === 'online' || a.consultationMode?.toLowerCase() === 'both')
+  const hasOffline = clinicNames.length > 0 || avail.some(a => a.consultationMode?.toLowerCase() === 'offline' || a.consultationMode?.toLowerCase() === 'both')
   const headerLocation = clinicNames[0] || cities[0] || 'Location not listed'
 
-  const socialLinks        = bi.socialLinks || {}
-  const activeSocialLinks  = SOCIAL_SIDEBAR_CONFIG.filter(s => socialLinks[s.key])
+  const socialLinks = bi.socialLinks || {}
+  const activeSocialLinks = SOCIAL_SIDEBAR_CONFIG.filter(s => socialLinks[s.key])
 
-  const handleBookAppointment = () => {
+  const handleBookAppointment = (mode = null, availId = null) => {
     if (!UserAuthData?.token) { router.push('/auth'); return }
-    router.push(`/patient/${params?.id}`)
+    let path = `/patient/${params?.id}`
+    const query = new URLSearchParams()
+    if (mode) query.set('mode', mode)
+    if (availId) query.set('availabilityId', availId)
+    const qs = query.toString()
+    router.push(qs ? `${path}?${qs}` : path)
   }
 
   const TABS = ['overview', 'experience', 'availability', ...(hasBlogAccess ? ['blogs'] : []), 'reviews']
@@ -316,7 +323,7 @@ export default function DoctorProfilePage() {
                           Online Consult
                         </StatBadge>
                       )}
-                      {modes.includes('offline') && (
+                      {hasOffline && (
                         <StatBadge icon={UserCheck} color="bg-orange-50 text-orange-700 border border-orange-100">
                           In-Person
                         </StatBadge>
@@ -371,13 +378,26 @@ export default function DoctorProfilePage() {
 
                 <div className="flex flex-wrap gap-2.5">
                   {hasOnlineBooking ? (
-                    <button
-                      onClick={handleBookAppointment}
-                      className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-lg shadow-orange-500/25 hover:scale-[1.02] active:scale-[0.98]"
-                    >
-                      <Calendar className="w-5 h-5" />
-                      {UserAuthData?.token ? 'Book Appointment' : 'Login to Book'}
-                    </button>
+                    <div className="flex flex-wrap gap-2.5">
+                      {hasOffline && (
+                        <button
+                          onClick={() => handleBookAppointment('offline')}
+                          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-teal-700 text-white font-bold rounded-xl hover:from-teal-700 hover:to-teal-800 transition-all duration-200 shadow-lg shadow-teal-500/25 hover:scale-[1.02] active:scale-[0.98]"
+                        >
+                          <Building2 className="w-5 h-5" />
+                          {UserAuthData?.token ? 'Visit Clinic' : 'Login to Book Clinic'}
+                        </button>
+                      )}
+                      {hasOnline && hasOnlineConsult && (
+                        <button
+                          onClick={() => handleBookAppointment('online')}
+                          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-lg shadow-orange-500/25 hover:scale-[1.02] active:scale-[0.98]"
+                        >
+                          <Video className="w-5 h-5" />
+                          {UserAuthData?.token ? 'Consult Online' : 'Login for Online'}
+                        </button>
+                      )}
+                    </div>
                   ) : (
                     <div className="flex items-center gap-2 px-6 py-3 bg-slate-100 text-slate-400 font-semibold rounded-xl border border-slate-200 cursor-not-allowed select-none text-sm">
                       <Calendar className="w-4 h-4" />Booking Unavailable
@@ -393,7 +413,7 @@ export default function DoctorProfilePage() {
                   )}
                   {hasOnlineConsult && (
                     <button
-                      onClick={() => router.push(`/patient/${params?.id}`)}
+                      onClick={() => handleBookAppointment('online')}
                       className="flex items-center gap-2 px-5 py-3 border-2 border-blue-500 text-blue-600 font-semibold rounded-xl hover:bg-blue-50 transition-all duration-200 hover:scale-[1.02]"
                     >
                       <Video className="w-4 h-4" />Video Consult
@@ -418,11 +438,10 @@ export default function DoctorProfilePage() {
                 <button
                   key={tab}
                   onClick={() => setSelectedTab(tab)}
-                  className={`px-6 md:px-8 py-4 font-bold text-sm capitalize whitespace-nowrap transition-all duration-200 border-b-2 ${
-                    selectedTab === tab
-                      ? 'text-teal-600 border-teal-600 bg-white'
-                      : 'text-slate-500 border-transparent hover:text-slate-800 hover:bg-white/50'
-                  }`}
+                  className={`px-6 md:px-8 py-4 font-bold text-sm capitalize whitespace-nowrap transition-all duration-200 border-b-2 ${selectedTab === tab
+                    ? 'text-teal-600 border-teal-600 bg-white'
+                    : 'text-slate-500 border-transparent hover:text-slate-800 hover:bg-white/50'
+                    }`}
                 >
                   {tab}
                   {tab === 'availability' && avail.length > 0 && (
@@ -445,7 +464,7 @@ export default function DoctorProfilePage() {
               <ExperienceTab doctor={doctor} />
             )}
             {selectedTab === 'availability' && (
-              <AvailabilityTab doctor={doctor} />
+              <AvailabilityTab doctor={doctor} onBook={(mode, id) => handleBookAppointment(mode, id)} />
             )}
             {selectedTab === 'blogs' && hasBlogAccess && (
               <BlogsTab doctorId={params?.id} displayName={displayName} />
@@ -463,13 +482,26 @@ export default function DoctorProfilePage() {
               </div>
               <p className="text-5xl font-black mb-5">{fee}</p>
               {hasOnlineBooking ? (
-                <button
-                  onClick={handleBookAppointment}
-                  className="w-full px-6 py-3.5 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition-all duration-200 shadow-lg shadow-orange-900/30 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-sm"
-                >
-                  <Calendar className="w-5 h-5" />
-                  {UserAuthData?.token ? 'Book Appointment' : 'Login to Book'}
-                </button>
+                <div className="space-y-3">
+                  {hasOffline && (
+                    <button
+                      onClick={() => handleBookAppointment('offline')}
+                      className="w-full px-6 py-3.5 bg-white text-teal-700 border-2 border-teal-600 hover:bg-teal-50 font-bold rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-sm"
+                    >
+                      <Building2 className="w-5 h-5" />
+                      Visit Clinic
+                    </button>
+                  )}
+                  {hasOnline && hasOnlineConsult && (
+                    <button
+                      onClick={() => handleBookAppointment('online')}
+                      className="w-full px-6 py-3.5 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition-all duration-200 shadow-lg shadow-orange-900/30 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-sm"
+                    >
+                      <Video className="w-5 h-5" />
+                      Consult Online
+                    </button>
+                  )}
+                </div>
               ) : (
                 <div className="w-full px-6 py-3.5 bg-white/10 text-white/50 font-semibold rounded-xl border border-white/10 flex items-center justify-center gap-2 text-sm cursor-not-allowed select-none">
                   <Calendar className="w-4 h-4" />Booking Unavailable
@@ -493,7 +525,7 @@ export default function DoctorProfilePage() {
                 <div className="flex items-center justify-between py-2 border-b border-slate-50">
                   <span className="text-slate-500 text-sm">Mode</span>
                   <span className="font-bold text-slate-900 text-xs capitalize">
-                    {modes.length === 2 ? 'Online & In-Person' : modes[0] || '—'}
+                    {hasOnline && hasOffline ? 'Online & In-Person' : (hasOnline ? 'Online' : (hasOffline ? 'In-Person' : '—'))}
                   </span>
                 </div>
                 {fee !== 'N/A' && (

@@ -12,10 +12,10 @@ import {
 } from "lucide-react";
 
 const PAYMENT_METHODS = [
-  { id: "upi",        label: "UPI",                icon: Smartphone, desc: "Pay via any UPI app" },
-  { id: "card",       label: "Credit / Debit Card", icon: CreditCard, desc: "Visa, Mastercard, RuPay" },
-  { id: "netbanking", label: "Net Banking",          icon: Building2,  desc: "All major banks supported" },
-  { id: "wallet",     label: "Wallet",               icon: Wallet,     desc: "Paytm, PhonePe, Amazon Pay" },
+  { id: "upi", label: "UPI", icon: Smartphone, desc: "Pay via any UPI app" },
+  { id: "card", label: "Credit / Debit Card", icon: CreditCard, desc: "Visa, Mastercard, RuPay" },
+  { id: "netbanking", label: "Net Banking", icon: Building2, desc: "All major banks supported" },
+  { id: "wallet", label: "Wallet", icon: Wallet, desc: "Paytm, PhonePe, Amazon Pay" },
 ];
 
 const PaymentPageFallback = () => (
@@ -35,44 +35,67 @@ function PaymentPageInner() {
   const { UserAuthData: auth } = useContext(AuthContext);
   const { createAppointment, loading: apiLoading } = useAppointment();
 
-  const doctorId         = searchParams.get("doctorId")         || "";
-  const patientId        = searchParams.get("patientId")        || "";
-  const doctorName       = searchParams.get("doctorName")       || "Doctor";
-  const specialization   = searchParams.get("specialization")   || "";
-  const date             = searchParams.get("date")             || "";
-  const timeSlotStart    = searchParams.get("timeSlotStart")    || "";
-  const timeSlotEnd      = searchParams.get("timeSlotEnd")      || "";
-  const timeSlotLabel    = searchParams.get("timeSlotLabel")    || "";
+  const doctorId = searchParams.get("doctorId") || "";
+  const patientId = searchParams.get("patientId") || "";
+  const doctorName = searchParams.get("doctorName") || "Doctor";
+  const specialization = searchParams.get("specialization") || "";
+  const date = searchParams.get("date") || "";
+  const timeSlotStart = searchParams.get("timeSlotStart") || "";
+  const timeSlotEnd = searchParams.get("timeSlotEnd") || "";
+  const timeSlotLabel = searchParams.get("timeSlotLabel") || "";
   const consultationMode = searchParams.get("consultationMode") || "offline";
   // ✅ Fixed: was searchParams.get("type") — param is sent as "consultationType"
   const consultationType = searchParams.get("consultationType") || (consultationMode === "online" ? "video" : "in-person");
-  const amount           = Number(searchParams.get("amount")    || 0);
-  const symptoms         = searchParams.get("symptoms")         || "";
-  const notes            = searchParams.get("notes")            || "";
+  const amount = Number(searchParams.get("amount") || 0);
+  const symptoms = searchParams.get("symptoms") || "";
+  const notes = searchParams.get("notes") || "";
 
   const [selectedMethod, setSelectedMethod] = useState("upi");
-  const [upiId,          setUpiId]          = useState("");
-  const [paying,         setPaying]         = useState(false);
-  const [paid,           setPaid]           = useState(false);
+  const [upiId, setUpiId] = useState("");
+  const [paying, setPaying] = useState(false);
+  const [paid, setPaid] = useState(false);
   const [appointmentResult, setAppointmentResult] = useState(null);
-  const [error,          setError]          = useState("");
+  const [error, setError] = useState("");
 
   const formattedDate = date
     ? new Date(date).toLocaleDateString("en-IN", {
-        weekday: "long", day: "2-digit", month: "long", year: "numeric",
-      })
+      weekday: "long", day: "2-digit", month: "long", year: "numeric",
+    })
     : "";
+
+  const sendAppointmentNotification = (appointmentData) => {
+    if (!("Notification" in window)) return;
+    const doSend = () => {
+      try {
+        new Notification(`✅ Appointment Confirmed with ${doctorName}`, {
+          body: `${consultationLabel} · ${formattedDate} at ${timeSlotLabel}\nAmount paid: ₹${amount}`,
+          icon: "/favicon.ico",
+          tag: appointmentData?._id || "appointment",
+        });
+      } catch (_) { /* silent — some browsers block even with permission */ }
+    };
+    if (Notification.permission === "granted") {
+      doSend();
+    } else if (Notification.permission === "default") {
+      // Request permission — user can dismiss without error
+      Notification.requestPermission().then((permission) => {
+        if (permission === "granted") doSend();
+        // "denied" or "default" (dismissed) — no action, no error
+      }).catch(() => { /* ignore */ });
+    }
+    // If "denied" — skip silently
+  };
 
   const bookAppointment = async ({ paymentId }) => {
     const payload = {
-      patientId:        patientId || auth?.userId || auth?._id,
+      patientId: patientId || auth?.userId || auth?._id,
       doctorId,
-      appointmentDate:  new Date(date).toISOString(),
-      timeSlot:         { start: timeSlotStart, end: timeSlotEnd },
-      status:           "pending",
+      appointmentDate: new Date(date).toISOString(),
+      timeSlot: { start: timeSlotStart, end: timeSlotEnd },
+      status: "pending",
       consultationType,
-      meetingLink:      "",
-      isPaid:           true,
+      meetingLink: "",
+      isPaid: true,
       paymentId,
       amount,
       symptoms,
@@ -82,8 +105,11 @@ function PaymentPageInner() {
     const res = await createAppointment(payload);
 
     if (res?.status === 201 || res?.status === 200) {
-      setAppointmentResult(res.data?.appointment || res.data);
+      const appointment = res.data?.appointment || res.data;
+      setAppointmentResult(appointment);
       setPaid(true);
+      // 🔔 Auto push notification on successful booking
+      sendAppointmentNotification(appointment);
     } else {
       setError(
         res?.data?.message ||
@@ -92,6 +118,7 @@ function PaymentPageInner() {
     }
     setPaying(false);
   };
+
 
   const handlePay = async () => {
     setError("");
@@ -188,24 +215,22 @@ function PaymentPageInner() {
       <div className="max-w-4xl mx-auto px-4 -mt-6">
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4 mb-6 flex items-center">
           {[
-            { step: 1, label: "Select Slot", done: true,  active: false },
-            { step: 2, label: "Payment",     done: false, active: true  },
-            { step: 3, label: "Confirmed",   done: false, active: false },
+            { step: 1, label: "Select Slot", done: true, active: false },
+            { step: 2, label: "Payment", done: false, active: true },
+            { step: 3, label: "Confirmed", done: false, active: false },
           ].map((s, i) => (
             <div key={s.step} className="flex items-center flex-1">
               <div className="flex flex-col items-center flex-1">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                  s.done   ? "bg-emerald-500 text-white" :
-                  s.active ? "bg-teal-600 text-white"   :
-                             "bg-slate-100 text-slate-400"
-                }`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${s.done ? "bg-emerald-500 text-white" :
+                  s.active ? "bg-teal-600 text-white" :
+                    "bg-slate-100 text-slate-400"
+                  }`}>
                   {s.done ? <CheckCircle size={16} /> : s.step}
                 </div>
-                <p className={`text-xs mt-1 font-medium ${
-                  s.active ? "text-teal-700"    :
-                  s.done   ? "text-emerald-600" :
-                             "text-slate-400"
-                }`}>
+                <p className={`text-xs mt-1 font-medium ${s.active ? "text-teal-700" :
+                  s.done ? "text-emerald-600" :
+                    "text-slate-400"
+                  }`}>
                   {s.label}
                 </p>
               </div>
@@ -228,28 +253,24 @@ function PaymentPageInner() {
                     key={id}
                     type="button"
                     onClick={() => setSelectedMethod(id)}
-                    className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left ${
-                      selectedMethod === id
-                        ? "border-teal-500 bg-teal-50"
-                        : "border-slate-200 hover:border-slate-300 bg-white"
-                    }`}
+                    className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left ${selectedMethod === id
+                      ? "border-teal-500 bg-teal-50"
+                      : "border-slate-200 hover:border-slate-300 bg-white"
+                      }`}
                   >
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                      selectedMethod === id ? "bg-teal-600 text-white" : "bg-slate-100 text-slate-500"
-                    }`}>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${selectedMethod === id ? "bg-teal-600 text-white" : "bg-slate-100 text-slate-500"
+                      }`}>
                       <Icon size={18} />
                     </div>
                     <div>
-                      <p className={`text-sm font-semibold ${
-                        selectedMethod === id ? "text-teal-800" : "text-slate-700"
-                      }`}>
+                      <p className={`text-sm font-semibold ${selectedMethod === id ? "text-teal-800" : "text-slate-700"
+                        }`}>
                         {label}
                       </p>
                       <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
                     </div>
-                    <div className={`ml-auto w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
-                      selectedMethod === id ? "border-teal-600 bg-teal-600" : "border-slate-300"
-                    }`}>
+                    <div className={`ml-auto w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${selectedMethod === id ? "border-teal-600 bg-teal-600" : "border-slate-300"
+                      }`}>
                       {selectedMethod === id && <div className="w-2 h-2 bg-white rounded-full" />}
                     </div>
                   </button>
