@@ -4,6 +4,10 @@ const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
 const { connectdb } = require("./config/db");
+const helmet = require("helmet");
+const mongoSanitize = require("express-mongo-sanitize");
+const rateLimit = require("express-rate-limit");
+const compression = require("compression");
 const { server, app } = require("./services/socket.service");
 
 const AuthRouter = require("./routes/auth.routes");
@@ -55,6 +59,21 @@ app.use(cors({
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
+
+// Security Middleware
+app.use(helmet()); // Set security HTTP headers
+app.use(mongoSanitize()); // Prevent NoSQL query injection
+app.use(compression()); // Compress response bodies
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: "Too many requests from this IP, please try again after 15 minutes",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use("/auth", limiter); // Apply rate limit to auth routes
 
 
 app.use(express.json({ limit: "30mb" }));

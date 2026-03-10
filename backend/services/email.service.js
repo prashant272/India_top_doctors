@@ -4,8 +4,8 @@ const { transporter } = require('../config/nodemailer');
 const sendContactEmail = async ({ name, email, subject, message }) => {
   await transporter.sendMail({
     from: "noreply@globalhealthcareawards.com",
-    to: "sundriyalabhishek98@gmail.com",
-    replyTo: "sundriyalabhishek98@gmail.com",
+    to: process.env.CONTACT_EMAIL || "sundriyalabhishek98@gmail.com",
+    replyTo: process.env.CONTACT_EMAIL || "sundriyalabhishek98@gmail.com",
     subject: subject || `New Contact Message from ${name}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f9fafb; padding: 24px; border-radius: 12px;">

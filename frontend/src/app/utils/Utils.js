@@ -22,7 +22,7 @@ const API = axios.create({
 
 API.interceptors.request.use(
   (config) => {
-    const userData = localStorage.getItem("UserData");
+    const userData = typeof window !== 'undefined' ? localStorage.getItem("UserData") : null;
 
     if (userData) {
       const parsedUser = JSON.parse(userData);

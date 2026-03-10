@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import {
   Search, User, Stethoscope, SlidersHorizontal, X, MapPin,
   Shield, TrendingUp, HeartPulse, BadgeCheck, Locate, Map,
@@ -32,7 +32,6 @@ const initialSearch = { doctorName: '', specialist: '', state: '', area: '', lat
 
 export default function HeroSlider() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { doctorList } = usePatientContext()
   const [searchData, setSearchData] = useState(initialSearch)
   const [showLocationDropdown, setShowLocationDropdown] = useState(false)
