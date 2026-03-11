@@ -1,9 +1,11 @@
 import PatientVideoCall from '@/app/Components/patients/PatientVideoCall/PatientVideoCall'
-import React from 'react'
+import React, { Suspense } from 'react'
 
 const page = () => {
   return (
-    <PatientVideoCall/>
+    <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center">Loading Video Call...</div>}>
+      <PatientVideoCall />
+    </Suspense>
   )
 }
 

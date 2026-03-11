@@ -28,41 +28,28 @@ const ForgotPassrouter = require("./routes/forgotPassword.routes");
 const Contactrouter = require("./routes/contact.route");
 const hospitalRouter = require("./routes/hospital.route");
 const providerRouter = require("./routes/provider.routes");
+const PaymentRouter = require("./routes/payment.routes");
 
 startAllCrons();
 
 connectdb();
 
-const allowedOrigins = [
-  "http://localhost:3000",
-  "http://localhost:3001",
-  "http://127.0.0.1:3000",
-  "http://127.0.0.1:3001",
-  "https://www.indiatopdoctors.com",
-  "https://indiatopdoctors.com",
-];
-
 app.use(cors({
-  origin: function (origin, callback) {
-    const isLocal = !origin ||
-      origin.includes("localhost") ||
-      origin.includes("127.0.0.1") ||
-      origin.includes("192.168.");
-
-    if (isLocal || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
+  origin: true,
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
+app.use(express.json({ limit: "30mb" }));
+app.use(express.urlencoded({ extended: true, limit: "30mb" }));
+app.use(morgan("dev"));
+
 // Security Middleware
-app.use(helmet()); // Set security HTTP headers
-app.use(mongoSanitize()); // Prevent NoSQL query injection
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+}));
+// app.use(mongoSanitize()); // Prevent NoSQL query injection - Disabled due to Express 5 compatibility (Cannot set property query)
 app.use(compression()); // Compress response bodies
 
 // Rate limiting
@@ -75,10 +62,6 @@ const limiter = rateLimit({
 });
 app.use("/auth", limiter); // Apply rate limit to auth routes
 
-
-app.use(express.json({ limit: "30mb" }));
-app.use(express.urlencoded({ extended: true, limit: "30mb" }));
-app.use(morgan("dev"));
 
 app.get("/", (req, res) => res.send("Server is running"));
 
@@ -98,6 +81,8 @@ app.use("/forgot-password", ForgotPassrouter)
 app.use("/email", Contactrouter)
 app.use("/hospitals", hospitalRouter)
 app.use("/providers", providerRouter)
+app.use("/api/payment", PaymentRouter);
+
 app.use(errormiddleware);
 
 const PORT = process.env.PORT || 5000;

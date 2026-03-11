@@ -72,6 +72,10 @@ exports.createNotificationService = async ({
 }
 
 exports.getUserNotificationsService = async (userId) => {
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+        console.warn(`getUserNotificationsService: Invalid or missing userId: ${userId}`);
+        return [];
+    }
     return await Notification.find({ recipient: userId })
         .sort({ createdAt: -1 })
 }
@@ -85,6 +89,10 @@ exports.markNotificationAsReadService = async (notificationId) => {
 }
 
 exports.getUnreadCountService = async (userId) => {
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+        console.warn(`getUnreadCountService: Invalid or missing userId: ${userId}`);
+        return 0;
+    }
     return await Notification.countDocuments({
         recipient: userId,
         read: false

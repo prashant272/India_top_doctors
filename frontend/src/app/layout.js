@@ -93,10 +93,10 @@ export default function RootLayout({ children }) {
         </Providers>
 
         {/* Google Maps */}
-        <script
-          src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDVYXiffRklGe9hK9_of3CgC7M3g0XhQbk&libraries=places"
-          defer
-        ></script>
+        <Script
+          src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places`}
+          strategy="afterInteractive"
+        />
 
         {/* OneSignal Push Notifications */}
         <Script
@@ -107,11 +107,25 @@ export default function RootLayout({ children }) {
           {`
             window.OneSignalDeferred = window.OneSignalDeferred || [];
             OneSignalDeferred.push(async function(OneSignal) {
-              await OneSignal.init({
-                appId: "${process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID || 'YOUR_ONESIGNAL_APP_ID'}",
-                notifyButton: { enable: true },
-                allowLocalhostAsSecureOrigin: true,
-              });
+              const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+              
+              try {
+                await OneSignal.init({
+                  appId: "${process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID || '4bda9ea2-7479-47c3-afd6-d41e82631e09'}",
+                  notifyButton: { enable: true },
+                  allowLocalhostAsSecureOrigin: true,
+                });
+              } catch (e) {
+                if (isLocalhost) {
+                  console.warn("OneSignal initialization failed on localhost (expected):", e.message);
+                } else {
+                  throw e;
+                }
+              }
+
+              if (isLocalhost) {
+                console.log("OneSignal: Skipping push notification prompt on localhost to avoid domain restriction errors.");
+              }
             });
           `}
         </Script>

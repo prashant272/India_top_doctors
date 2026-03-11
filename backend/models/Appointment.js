@@ -54,6 +54,9 @@ const appointmentSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
+        lastTxnId: {
+            type: String,
+        },
     },
     { timestamps: true }
 );

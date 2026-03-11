@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useContext, useState } from "react";
 import { AuthContext } from "@/app/context/AuthContext";
 import useAppointment from "@/app/hooks/useAppointment";
+import { API } from "@/app/utils/Utils";
 import {
   ArrowLeft, CheckCircle, Stethoscope, Calendar,
   Clock, IndianRupee, CreditCard, Smartphone,
@@ -52,10 +53,34 @@ function PaymentPageInner() {
 
   const [selectedMethod, setSelectedMethod] = useState("upi");
   const [upiId, setUpiId] = useState("");
+  const [upiVerified, setUpiVerified] = useState(false);
+  const [verifyingUpi, setVerifyingUpi] = useState(false);
+  const [cardDetails, setCardDetails] = useState({
+    number: "",
+    expiry: "",
+    cvv: "",
+    name: ""
+  });
   const [paying, setPaying] = useState(false);
   const [paid, setPaid] = useState(false);
   const [appointmentResult, setAppointmentResult] = useState(null);
   const [error, setError] = useState("");
+
+  const verifyUpi = () => {
+    if (!upiId.trim()) return setError("Please enter a UPI ID");
+    setVerifyingUpi(true);
+    setError("");
+    // Simulate API call for UPI verification
+    setTimeout(() => {
+      if (upiId.includes("@")) {
+        setUpiVerified(true);
+      } else {
+        setError("Invalid UPI ID format. Should be like name@bank");
+        setUpiVerified(false);
+      }
+      setVerifyingUpi(false);
+    }, 1500);
+  };
 
   const formattedDate = date
     ? new Date(date).toLocaleDateString("en-IN", {
@@ -122,15 +147,153 @@ function PaymentPageInner() {
 
   const handlePay = async () => {
     setError("");
-    if (selectedMethod === "upi" && !upiId.trim()) {
-      return setError("Please enter your UPI ID");
+
+    // VALIDATION
+    if (selectedMethod === "upi") {
+      if (!upiId.trim()) {
+        setError("Please enter your UPI ID");
+        return;
+      }
+      if (!upiVerified) {
+        setError("Please verify your UPI ID first");
+        return;
+      }
+    } else if (selectedMethod === "card") {
+      if (!cardDetails.number || cardDetails.number.length < 16) {
+        setError("Please enter a valid 16-digit card number");
+        return;
+      }
+      if (!cardDetails.expiry || !cardDetails.expiry.includes("/")) {
+        setError("Please enter card expiry (MM/YY)");
+        return;
+      }
+      if (!cardDetails.cvv || cardDetails.cvv.length < 3) {
+        setError("Please enter a valid CVV");
+        return;
+      }
+      if (!cardDetails.name) {
+        setError("Please enter cardholder name");
+        return;
+      }
+    } else if (selectedMethod === "netbanking") {
+      // Netbanking usually requires selection but PayU has its own list
+      console.log("Proceeding with netbanking...");
     }
+    // Amount check (PayU minimum)
+    if (amount < 1) {
+      setError("Payment amount must be at least ₹1.00");
+      return;
+    }
+
     setPaying(true);
     try {
-      await new Promise((r) => setTimeout(r, 1500));
-      await bookAppointment({ paymentId: "simulated_" + Date.now() });
-    } catch {
-      setError("Payment failed. Please try again.");
+      // 1. Prepare dynamic fields for hash
+      const firstname = auth?.fullName || auth?.name || "Patient";
+      const email = auth?.email || "patient@example.com";
+      const productinfo = `Appointment for ${doctorName}`;
+
+      // 2. Call backend to initiate payment and get hash
+      const payload = {
+        appointmentData: {
+          patientId: patientId || auth?.userId || auth?._id,
+          doctorId,
+          appointmentDate: new Date(date).toISOString(),
+          timeSlot: { start: timeSlotStart, end: timeSlotEnd },
+          consultationType,
+          amount,
+          symptoms,
+          notes,
+          firstname,
+          email,
+          productinfo
+        }
+      };
+
+      const hashRes = await API.post("/api/payment/initiate", payload);
+
+      if (!hashRes.data.success) {
+        throw new Error(hashRes.data.message || "Failed to initiate payment");
+      }
+
+      const {
+        hash,
+        merchantKey,
+        txnid: backendTxnId,
+        amount: backendAmount,
+        productinfo: backendProductInfo,
+        firstname: backendFirstName,
+        email: backendEmail,
+        phone: backendPhone
+      } = hashRes.data;
+
+      // 3. Create a form and submit to PayU
+      const payuAction = process.env.NEXT_PUBLIC_PAYU_ENV === 'production'
+        ? "https://secure.payu.in/_payment"
+        : "https://test.payu.in/_payment";
+
+      const form = document.createElement('form');
+      form.action = payuAction;
+      form.method = 'POST';
+
+      const fields = {
+        key: merchantKey,
+        txnid: backendTxnId,
+        amount: backendAmount,
+        productinfo: backendProductInfo,
+        firstname: backendFirstName,
+        email: backendEmail,
+        phone: backendPhone || auth?.phone || "9999999999",
+        surl: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8086'}/api/payment/verify/success`,
+        furl: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8086'}/api/payment/verify/failure`,
+        hash: hash,
+        service_provider: "payu_paisa",
+        // Seamless / Merchant Hosted fields
+        pg: selectedMethod === "card" ? "CC" : (selectedMethod === "upi" ? "UPI" : ""),
+        bankcode: selectedMethod === "card" ? "CC" : (selectedMethod === "upi" ? "UPI" : ""),
+        // Prevent PayU from showing their own selection page on failure/cancel
+        enforce_paymethod: selectedMethod === "card" ? "creditcard,debitcard" : "upi",
+        // Specific details for Seamless
+        ...(selectedMethod === "upi" && { vpa: upiId }),
+        ...(selectedMethod === "card" && {
+          ccnum: cardDetails.number.replace(/\s/g, ''),
+          ccname: cardDetails.name,
+          ccvv: cardDetails.cvv,
+          ccexpmon: cardDetails.expiry.split('/')[0].trim(),
+          ccexpyear: "20" + cardDetails.expiry.split('/')[1].trim(), 
+        }),
+        // Include empty UDFs
+        udf1: "",
+        udf2: "",
+        udf3: "",
+        udf4: "",
+        udf5: ""
+      };
+
+      console.log("Submitting SEAMLESS to PayU with fields:", fields);
+      console.log("Calculated Hash from Backend:", hash);
+
+      // Final check: if any mandatory field is missing, stop
+      const mandatory = ['key', 'txnid', 'amount', 'productinfo', 'firstname', 'email', 'phone', 'surl', 'furl', 'hash'];
+      const missing = mandatory.filter(k => !fields[k]);
+      if (missing.length > 0) {
+        setPaying(false);
+        return setError(`Mandatory fields missing: ${missing.join(', ')}`);
+      }
+
+      for (const [key, value] of Object.entries(fields)) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = value;
+        form.appendChild(input);
+      }
+
+      document.body.appendChild(form);
+      form.submit();
+
+    } catch (err) {
+      console.error("Payment error:", err);
+      setError(err?.response?.data?.message || err?.message || "Payment failed to initiate. Please try again.");
       setPaying(false);
     }
   };
@@ -285,15 +448,21 @@ function PaymentPageInner() {
                   <input
                     type="text"
                     value={upiId}
-                    onChange={(e) => setUpiId(e.target.value)}
+                    onChange={(e) => {
+                      setUpiId(e.target.value);
+                      setUpiVerified(false);
+                    }}
                     placeholder="yourname@upi"
-                    className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                    className={`flex-1 px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 ${upiVerified ? "border-emerald-500 bg-emerald-50 focus:ring-emerald-400" : "border-slate-200 focus:ring-teal-400"}`}
                   />
                   <button
                     type="button"
-                    className="px-4 py-2.5 bg-slate-100 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-200 transition"
+                    onClick={verifyUpi}
+                    disabled={verifyingUpi || upiVerified}
+                    className={`px-4 py-2.5 text-sm font-medium rounded-lg transition flex items-center gap-2 ${upiVerified ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                   >
-                    Verify
+                    {verifyingUpi ? <Loader2 size={16} className="animate-spin" /> : upiVerified ? <CheckCircle size={16} /> : null}
+                    {upiVerified ? "Verified" : "Verify"}
                   </button>
                 </div>
                 <p className="text-xs text-slate-400 mt-2">e.g. mobilenumber@paytm, name@gpay</p>
@@ -307,6 +476,8 @@ function PaymentPageInner() {
                   <label className="block text-xs font-medium text-slate-500 mb-1">Card Number</label>
                   <input
                     type="text"
+                    value={cardDetails.number}
+                    onChange={(e) => setCardDetails({ ...cardDetails, number: e.target.value })}
                     placeholder="1234 5678 9012 3456"
                     className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
                   />
@@ -316,6 +487,8 @@ function PaymentPageInner() {
                     <label className="block text-xs font-medium text-slate-500 mb-1">Expiry</label>
                     <input
                       type="text"
+                      value={cardDetails.expiry}
+                      onChange={(e) => setCardDetails({ ...cardDetails, expiry: e.target.value })}
                       placeholder="MM / YY"
                       className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
                     />
@@ -324,6 +497,8 @@ function PaymentPageInner() {
                     <label className="block text-xs font-medium text-slate-500 mb-1">CVV</label>
                     <input
                       type="password"
+                      value={cardDetails.cvv}
+                      onChange={(e) => setCardDetails({ ...cardDetails, cvv: e.target.value })}
                       placeholder="•••"
                       maxLength={4}
                       className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
@@ -334,6 +509,8 @@ function PaymentPageInner() {
                   <label className="block text-xs font-medium text-slate-500 mb-1">Name on Card</label>
                   <input
                     type="text"
+                    value={cardDetails.name}
+                    onChange={(e) => setCardDetails({ ...cardDetails, name: e.target.value })}
                     placeholder="Full name"
                     className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
                   />

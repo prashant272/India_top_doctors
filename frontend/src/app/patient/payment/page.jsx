@@ -1,11 +1,11 @@
 import PaymentPage from '@/app/Components/patients/Paymentpage/Paymentpage'
-import React from 'react'
+import React, { Suspense } from 'react'
 
 const page = () => {
   return (
-    <>
-    <PaymentPage/>
-    </>
+    <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center">Loading...</div>}>
+      <PaymentPage />
+    </Suspense>
   )
 }
 
